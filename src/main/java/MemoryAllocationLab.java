@@ -1,5 +1,7 @@
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Scanner;
 
 public class MemoryAllocationLab {
 
@@ -57,30 +59,98 @@ public class MemoryAllocationLab {
         // Create initial free block: new MemoryBlock(0, totalMemory, null)
         // Read remaining lines in a loop
         // Parse each line and call allocate() or deallocate()
+        File file = new File(filename);
+        try{
+        Scanner scan = new Scanner(file);
+        totalMemory = Integer.parseInt(scan.nextLine());
+        memory.add(new MemoryBlock(0, totalMemory, null));
 
+        while (scan.hasNextLine()) {
+              String line = scan.nextLine().trim();
+             if (line.isEmpty()) continue;
+
+              String[] parts = line.split(" ");
+
+           if (parts[0].equals("REQUEST")) {
+               allocate(parts[1], Integer.parseInt(parts[2]));
+               }
+
+           if (parts[0].equals("RELEASE")) {
+               deallocate(parts[1]);
+                }      
+}
+
+
+scan.close();
+
+        }
+        catch(FileNotFoundException e){
+            return;
+        }
 
         // TODO 2: Implement these helper methods
-
+        
     }
 
     /**
      * TODO 2A: Allocate memory using First-Fit
      */
-    private static void allocate(String processName, int size) {
-        // Search through memory list
-        // Find first free block where size >= requested size
-        // If found:
-        //   - Mark block as allocated (set processName)
-        //   - If block is larger than needed, split it:
-        //     * Create new free block for remaining space
-        //     * Add it to memory list after current block
-        //   - Increment successfulAllocations
-        //   - Print success message
-        // If not found:
-        //   - Increment failedAllocations
-        //   - Print failure message
+private static void allocate(String processName, int size) {
+    for (int i = 0; i < memory.size(); i++) {
+        MemoryBlock block = memory.get(i);
 
+        if (block.isFree() && block.size >= size) {
+
+            if (block.size == size) {
+                block.processName = processName;
+            } else {
+                MemoryBlock allocated = new MemoryBlock(block.start, size, processName);
+                MemoryBlock remaining = new MemoryBlock(
+                        block.start + size,
+                        block.size - size,
+                        null
+                );
+
+                memory.set(i, allocated);
+                memory.add(i + 1, remaining);
+            }
+
+            successfulAllocations++;
+            System.out.println("ALLOCATED " + processName);
+            return;
+        }
     }
+
+    failedAllocations++;
+    System.out.println("FAILED " + processName);
+}
+
+
+private static void deallocate(String processName) {
+    for (int i = 0; i < memory.size(); i++) {
+        MemoryBlock block = memory.get(i);
+
+        if (processName.equals(block.processName)) {
+            block.processName = null;
+
+            if (i + 1 < memory.size() && memory.get(i + 1).isFree()) {
+                MemoryBlock next = memory.remove(i + 1);
+                block.size += next.size;
+            }
+
+            if (i > 0 && memory.get(i - 1).isFree()) {
+                MemoryBlock prev = memory.get(i - 1);
+                prev.size += block.size;
+                memory.remove(i);
+            }
+
+            System.out.println("RELEASED " + processName);
+            return;
+        }
+    }
+}
+
+
 
     public static void displayStatistics() {
         System.out.println("\n========================================");
